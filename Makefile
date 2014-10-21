@@ -1,2 +1,0 @@
-check::
-	nodejs test.js
