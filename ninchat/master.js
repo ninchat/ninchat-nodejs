@@ -84,6 +84,26 @@ function sign(keyId, keySecret, expire, msg) {
 	return keyId + '-' + expire + '-' + nonce + '-' + digestBase64;
 };
 
+/**
+ * @example
+ *
+ *   var keyId = '22nlihvg';
+ *   var keySecret = 'C58sAn+Dp2Ogb2+FdfSNg3J0ImMYfYodUUgXFF2OPo0=';
+ *   var expire = Date.now() / 1000 + 60;
+ *   var metadata = {
+ *     Foo: 3.14159,
+ *     Bar: 'asdf'
+ *   };
+ *   var result = master.secureMetadata(keyId, keySecret, expire, metadata);
+ *   // Transmit the base64-encoded result to Ninchat as the value of
+ *   // the "secure" property of audience metadata.
+ *
+ * @param {string} keyId     - The master key id
+ * @param {string} keySecret - The master key secret
+ * @param {number} expire    - Expiration time in seconds (NOT milliseconds!)
+ * @param {object} metadata  - String keys mapped to JSON-compatible values
+ * @returns {string}
+ */
 exports.secureMetadata = function(keyId, keySecret, expire, metadata) {
 	return secureMetadata(keyId, keySecret, expire, metadata, {});
 };
