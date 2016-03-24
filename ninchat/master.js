@@ -95,8 +95,8 @@ function sign(keyId, keySecret, expire, msg) {
  *     Bar: 'asdf'
  *   };
  *   var result = master.secureMetadata(keyId, keySecret, expire, metadata);
- *   // Transmit the base64-encoded result to Ninchat as the value of
- *   // the "secure" property of audience metadata.
+ *   // Transmit the result string to Ninchat as the value
+ *   // of the "secure" property of audience metadata.
  *
  * @param {string} keyId     - The master key id
  * @param {string} keySecret - The master key secret
