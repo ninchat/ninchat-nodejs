@@ -1,0 +1,8 @@
+{
+  "name": "ninchat-nodejs",
+  "version": "1.0.0",
+  "description": "Node.js utilities for working with api.ninchat.com",
+  "repository": "ninchat/ninchat-nodejs",
+  "license": "BSD-2-Clause",
+  "main": "ninchat/index.js"
+}
