@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, Somia Reality Oy
+ * Copyright (c) 2013, Somia Reality Oy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,6 +25,10 @@
  */
 
 var crypto = require('crypto');
+
+function stdBase64ToUnpaddedUrl(stdEncoded) {
+	return stdEncoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=*$/, '');
+};
 
 exports.signCreateSession = function(keyId, keySecret, expire) {
 	var msg = [
@@ -52,7 +56,7 @@ exports.signJoinChannelForUser = function(keyId, keySecret, expire, channelId, u
 		['user_id', userId],
 	];
 
-	return signJoinChannel(keyId, keySecret, expire, channelId, memberAttrs, msg) + '-1';
+	return signJoinChannel(keyId, keySecret, expire, channelId, memberAttrs, msg) + '1';
 };
 
 function signJoinChannel(keyId, keySecret, expire, channelId, memberAttrs, msg) {
@@ -69,7 +73,7 @@ function signJoinChannel(keyId, keySecret, expire, channelId, memberAttrs, msg) 
 
 function sign(keyId, keySecret, expire, msg) {
 	expire = Math.floor(expire);
-	var nonce = crypto.pseudoRandomBytes(6).toString('base64');
+	var nonce = stdBase64ToUnpaddedUrl(crypto.pseudoRandomBytes(6).toString('base64'));
 
 	msg.push(['expire', expire]);
 	msg.push(['nonce', nonce]);
@@ -79,9 +83,9 @@ function sign(keyId, keySecret, expire, msg) {
 
 	var hmac = crypto.createHmac('SHA512', new Buffer(keySecret, 'base64'));
 	hmac.update(msgJson);
-	var digestBase64 = hmac.digest('base64');
+	var digestBase64 = stdBase64ToUnpaddedUrl(hmac.digest('base64'));
 
-	return keyId + '-' + expire + '-' + nonce + '-' + digestBase64;
+	return keyId + '.' + expire + '.' + nonce + '.' + digestBase64 + '.';
 };
 
 /**
@@ -145,7 +149,7 @@ function secureMetadata(keyId, keySecret, expire, metadata, msg) {
 	var msgEncrypted = cipher.read();
 
 	var msgIv = Buffer.concat([iv, msgEncrypted]);
-	var msgBase64 = msgIv.toString('base64');
+	var msgBase64 = stdBase64ToUnpaddedUrl(msgIv.toString('base64'));
 
-	return keyId + '-' + msgBase64;
+	return keyId + '.' + msgBase64;
 };
