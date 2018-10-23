@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Bot</title>
+	</head>
+	<body style="margin: 0; background-color: #222; color: #ddd">
+		<div id="ninchat-container"></div>
+		<input type="button" value="Close session" onclick="Ninchat.close('ninchat-container')"/>
+		<script>
+
+(() => {
+	document.getElementById("ninchat-container").style = "width: " + (window.innerWidth) + "px; height: " + (window.innerHeight-23) + "px"
+
+	let queueId = '5g099ft90049'
+	let configKey = 'site/5g03u2iv0049/5j6tjg7b004r4.json'
+	let environment = 'default'
+
+	window.ninchatQueueCallback = (data) => {
+		if (data.event == 'queue_found' && !data.queue_attrs.closed) {
+			window.NinchatAsyncInit = () => {
+				window.Ninchat.embedInit({
+					configKey:   configKey,
+					debug:       true,
+					environment: [environment],
+				})
+			}
+
+			if (!document.getElementById('ninchat-js')) {
+				let script = document.createElement('script')
+				script.id = 'ninchat-js'
+				script.src = 'https://ninchat.com/js/embed2.min.js'
+
+				let first = document.getElementsByTagName('script')[0]
+				first.parentNode.insertBefore(script, first)
+			}
+		}
+	}
+
+	let script = document.createElement('script')
+	script.src = 'https://api.ninchat.com/v2/call?callback=ninchatQueueCallback&data=%7b%22action%22:%22describe_queue%22,%22queue_id%22:%22' + queueId + '%22%7d'
+	document.getElementsByTagName('head')[0].appendChild(script)
+})()
+
+		</script>
+	</body>
+</html>
