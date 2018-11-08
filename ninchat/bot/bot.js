@@ -30,8 +30,9 @@ const events = require('events')
 const ninchatClient = require('ninchat-js')
 
 class ChannelAudience {
-	constructor(channelId) {
+	constructor(channelId, audienceId) {
 		this.channelId = channelId
+		this.audienceId = audienceId
 		this.buffering = false
 		this.seenMessageIds = new Set()
 		this.latestMessageId = ''
@@ -137,6 +138,16 @@ class ChannelAudience {
 
 		ctx.session.send(params, [JSON.stringify(content)])
 	}
+
+	transferAudience(ctx, targetQueueId) {
+		const params = {
+			action:      'transfer_audience',
+			audience_id: this.audienceId,
+			queue_id:    targetQueueId,
+		}
+
+		ctx.session.send(params)
+	}
 }
 
 class Context {
@@ -176,7 +187,7 @@ eventHandlers.session_created = (ctx, params) => {
 				ctx.session.send({action: 'part_channel', channel_id: channelId})
 			} else {
 				if (a === undefined) {
-					a = new ChannelAudience(channelId)
+					a = new ChannelAudience(channelId, info.channel_attrs.audience_id)
 					a.audienceResumed(ctx)
 				}
 				audienceChannels[channelId] = a
@@ -210,7 +221,7 @@ eventHandlers.queue_updated = (ctx, params) => {
 
 eventHandlers.channel_joined = (ctx, params) => {
 	if ('audience_id' in params.channel_attrs && !(params.channel_id in ctx.audienceChannels)) {
-		const a = new ChannelAudience(params.channel_id)
+		const a = new ChannelAudience(params.channel_id, params.channel_attrs.audience_id)
 		ctx.audienceChannels[params.channel_id] = a
 		a.audienceBegun(ctx)
 	}
@@ -310,6 +321,13 @@ exports.Bot = class extends events.EventEmitter {
 		const a = this.ctx.audienceChannels[channelId]
 		if (a !== undefined) {
 			a.sendMessage(this.ctx, content)
+		}
+	}
+
+	transferAudience(currentChannelId, targetQueueId) {
+		const a = this.ctx.audienceChannels[currentChannelId]
+		if (a !== undefined) {
+			a.transferAudience(this.ctx, targetQueueId)
 		}
 	}
 }
