@@ -4,5 +4,8 @@
   "description": "Node.js utilities for working with api.ninchat.com",
   "repository": "ninchat/ninchat-nodejs",
   "license": "BSD-2-Clause",
+  "dependencies": {
+    "ninchat-js": "ninchat/ninchat-js"
+  },
   "main": "ninchat/index.js"
 }
