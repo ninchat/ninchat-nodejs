@@ -253,11 +253,10 @@ eventHandlers.session_created = (ctx, params) => {
 		const info = params.user_channels[channelId]
 
 		if ('audience_id' in info.channel_attrs) {
-			let a = ctx.audienceChannels[channelId]
-
 			if (info.channel_attrs.closed || info.channel_attrs.suspended) {
 				ctx.sendAction({action: 'part_channel', channel_id: channelId})
 			} else {
+				let a = ctx.audienceChannels[channelId]
 				if (a === undefined) {
 					a = new ChannelAudience(channelId, info.channel_attrs.audience_id)
 					a.audienceResumed(ctx)
@@ -311,9 +310,9 @@ eventHandlers.channel_updated = (ctx, params) => {
 			ctx.sendAction({action: 'part_channel', channel_id: params.channel_id})
 		}
 
-		const a = ctx.channelAudiences[params.channel_id]
+		const a = ctx.audienceChannels[params.channel_id]
 		if (a !== undefined) {
-			delete ctx.channelAudiences[params.channel_id]
+			delete ctx.audienceChannels[params.channel_id]
 			a.audienceEnded(ctx)
 		}
 	}
