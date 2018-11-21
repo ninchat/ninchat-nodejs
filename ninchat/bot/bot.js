@@ -205,7 +205,7 @@ class Context {
 			}
 		}
 
-		this.session.send(params, payload)
+		return this.session.send(params, payload)
 	}
 }
 
