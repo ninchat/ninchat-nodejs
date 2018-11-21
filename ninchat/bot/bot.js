@@ -29,6 +29,37 @@
 const events = require('events')
 const ninchatClient = require('ninchat-js')
 
+class Queue {
+	constructor(id, attrs, settings, isMember) {
+		this.id = id
+		this.attrs = attrs
+		this.settings = settings || {}
+		this.isMember = !!isMember
+	}
+
+	found(ctx) {
+		ctx.bot.emit('queue:closed', this.id, !!this.attrs.closed)
+	}
+
+	updated(ctx, newAttrs, settings, isMember) {
+		const oldAttrs = this.attrs
+
+		this.attrs = newAttrs
+
+		if (settings !== undefined) {
+			this.settings = settings
+		}
+
+		if (isMember !== undefined) {
+			this.isMember = isMember
+		}
+
+		if (!newAttrs.closed !== !oldAttrs.closed) {
+			ctx.bot.emit('queue:closed', this.id, !!newAttrs.closed)
+		}
+	}
+}
+
 class ChannelAudience {
 	constructor(channelId, audienceId) {
 		this.channelId = channelId
@@ -63,7 +94,7 @@ class ChannelAudience {
 	}
 
 	loadHistory(ctx) {
-		const promise = ctx.session.send({
+		const promise = ctx.sendAction({
 			action:         'load_history',
 			channel_id:     this.channelId,
 			message_id:     this.latestMessageId,
@@ -136,7 +167,7 @@ class ChannelAudience {
 			message_type: 'ninchat.com/text',
 		}
 
-		ctx.session.send(params, [JSON.stringify(content)])
+		ctx.sendAction(params, [JSON.stringify(content)])
 	}
 
 	transferAudience(ctx, targetQueueId) {
@@ -146,7 +177,7 @@ class ChannelAudience {
 			queue_id:    targetQueueId,
 		}
 
-		ctx.session.send(params)
+		ctx.sendAction(params)
 	}
 }
 
@@ -157,13 +188,50 @@ class Context {
 		this.userId = userId
 		this.debug = debug
 		this.verbose = verbose
+		this.queues = {}
 		this.audienceChannels = {}
+	}
+
+	sendAction(params, payload) {
+		if (this.verbose) {
+			if (payload !== undefined && payload !== null) {
+				console.log('Action: ' + params.action + ' with payload:', params)
+			} else {
+				console.log('Action: ' + params.action + ':', params)
+			}
+		}
+
+		this.session.send(params, payload)
 	}
 }
 
-function acceptAudience(ctx, queueId, queueAttrs) {
-	if (queueAttrs.length > 0) {
-		ctx.session.send({action: 'accept_audience', queue_id: queueId})
+function queueUpdated(ctx, id, attrs, newSettings, isMember) {
+	let oldSettings = {}
+
+	let queue = ctx.queues[id]
+	if (queue === undefined) {
+		queue = new Queue(id, attrs, newSettings, isMember)
+		ctx.queues[id] = queue
+		queue.found(ctx)
+	} else {
+		oldSettings = queue.settings
+		queue.updated(ctx, attrs, newSettings, isMember)
+	}
+
+	if (queue.isMember && attrs.length > 0) {
+		ctx.sendAction({action: 'accept_audience', queue_id: id})
+	}
+
+	if (newSettings !== undefined && 'transfer_queue_ids' in newSettings) {
+		const oldSet = new Set(oldSettings.transfer_queue_ids || null)
+
+		for (let i in newSettings.transfer_queue_ids) {
+			const targetQueueId = newSettings.transfer_queue_ids[i]
+
+			if (!oldSet.has(targetQueueId)) {
+				ctx.sendAction({action: 'describe_queue', queue_id: targetQueueId})
+			}
+		}
 	}
 }
 
@@ -184,7 +252,7 @@ eventHandlers.session_created = (ctx, params) => {
 			let a = ctx.audienceChannels[channelId]
 
 			if (info.channel_attrs.closed || info.channel_attrs.suspended) {
-				ctx.session.send({action: 'part_channel', channel_id: channelId})
+				ctx.sendAction({action: 'part_channel', channel_id: channelId})
 			} else {
 				if (a === undefined) {
 					a = new ChannelAudience(channelId, info.channel_attrs.audience_id)
@@ -206,17 +274,23 @@ eventHandlers.session_created = (ctx, params) => {
 	if ('user_queues' in params) {
 		Object.keys(params.user_queues).forEach(queueId => {
 			const info = params.user_queues[queueId]
-			acceptAudience(ctx, queueId, info.queue_attrs)
+			queueUpdated(ctx, queueId, info.queue_attrs, undefined, true)
+
+			ctx.sendAction({action: 'describe_queue', queue_id: queueId}) // Get settings.
 		})
 	}
 }
 
+eventHandlers.queue_joined = (ctx, params) => {
+	queueUpdated(ctx, params.queue_id, params.queue_attrs, params.queue_settings, true)
+}
+
 eventHandlers.queue_found = (ctx, params) => {
-	acceptAudience(ctx, params.queue_id, params.queue_attrs)
+	queueUpdated(ctx, params.queue_id, params.queue_attrs, params.queue_settings, undefined)
 }
 
 eventHandlers.queue_updated = (ctx, params) => {
-	acceptAudience(ctx, params.queue_id, params.queue_attrs)
+	queueUpdated(ctx, params.queue_id, params.queue_attrs, params.queue_settings, undefined)
 }
 
 eventHandlers.channel_joined = (ctx, params) => {
@@ -230,7 +304,7 @@ eventHandlers.channel_joined = (ctx, params) => {
 eventHandlers.channel_updated = (ctx, params) => {
 	if (params.channel_attrs.closed || params.channel_attrs.suspended) {
 		if ('audience_id' in params.channel_attrs) {
-			ctx.session.send({action: 'part_channel', channel_id: params.channel_id})
+			ctx.sendAction({action: 'part_channel', channel_id: params.channel_id})
 		}
 
 		const a = ctx.channelAudiences[params.channel_id]
