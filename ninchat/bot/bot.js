@@ -160,11 +160,15 @@ class ChannelAudience {
 		this.buffering = true
 	}
 
-	sendMessage(ctx, content) {
+	sendMessage(ctx, content, messageType) {
+		if (messageType === undefined) {
+			messageType = 'ninchat.com/text'
+		}
+
 		const params = {
 			action:       'send_message',
 			channel_id:   this.channelId,
-			message_type: 'ninchat.com/text',
+			message_type: messageType,
 		}
 
 		ctx.sendAction(params, [JSON.stringify(content)])
@@ -391,10 +395,10 @@ exports.Bot = class extends events.EventEmitter {
 		session.open()
 	}
 
-	sendMessage(channelId, content) {
+	sendMessage(channelId, content, messageType) {
 		const a = this.ctx.audienceChannels[channelId]
 		if (a !== undefined) {
-			a.sendMessage(this.ctx, content)
+			a.sendMessage(this.ctx, content, messageType)
 		}
 	}
 
