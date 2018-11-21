@@ -365,26 +365,34 @@ exports.Bot = class extends events.EventEmitter {
 		const session = ninchatClient.newSession()
 
 		const handleEvent = (params, payload) => {
-			if (verboseLogging) {
-				console.log('Event: ' + params.event + ':', params)
-			}
+			try {
+				if (verboseLogging) {
+					console.log('Event: ' + params.event + ':', params)
+				}
 
-			const f = eventHandlers[params.event]
-			if (f !== undefined) {
-				f(this.ctx, params, payload)
+				const f = eventHandlers[params.event]
+				if (f !== undefined) {
+					f(this.ctx, params, payload)
+				}
+			} catch (e) {
+				console.log('Event handler:', e)
 			}
 		}
 
 		const handleSessionEvent = params => {
-			if (params.event == 'error') {
-				console.log('Bot session error:', params)
-				session.close()
-			} else {
-				if (this.ctx === null) {
-					this.ctx = new Context(this, session, params.user_id, debugMessages, verboseLogging)
-				}
+			try {
+				if (params.event == 'error') {
+					console.log('Bot session error:', params)
+					session.close()
+				} else {
+					if (this.ctx === null) {
+						this.ctx = new Context(this, session, params.user_id, debugMessages, verboseLogging)
+					}
 
-				handleEvent(params)
+					handleEvent(params)
+				}
+			} catch (e) {
+				console.log('Event handler:', e)
 			}
 		}
 
