@@ -160,11 +160,15 @@ class ChannelAudience {
 		this.buffering = true
 	}
 
-	sendMessage(ctx, content) {
+	sendMessage(ctx, content, messageType) {
+		if (messageType === undefined) {
+			messageType = 'ninchat.com/text'
+		}
+
 		const params = {
 			action:       'send_message',
 			channel_id:   this.channelId,
-			message_type: 'ninchat.com/text',
+			message_type: messageType,
 		}
 
 		ctx.sendAction(params, [JSON.stringify(content)])
@@ -201,7 +205,7 @@ class Context {
 			}
 		}
 
-		this.session.send(params, payload)
+		return this.session.send(params, payload)
 	}
 }
 
@@ -249,11 +253,10 @@ eventHandlers.session_created = (ctx, params) => {
 		const info = params.user_channels[channelId]
 
 		if ('audience_id' in info.channel_attrs) {
-			let a = ctx.audienceChannels[channelId]
-
 			if (info.channel_attrs.closed || info.channel_attrs.suspended) {
 				ctx.sendAction({action: 'part_channel', channel_id: channelId})
 			} else {
+				let a = ctx.audienceChannels[channelId]
 				if (a === undefined) {
 					a = new ChannelAudience(channelId, info.channel_attrs.audience_id)
 					a.audienceResumed(ctx)
@@ -307,9 +310,9 @@ eventHandlers.channel_updated = (ctx, params) => {
 			ctx.sendAction({action: 'part_channel', channel_id: params.channel_id})
 		}
 
-		const a = ctx.channelAudiences[params.channel_id]
+		const a = ctx.audienceChannels[params.channel_id]
 		if (a !== undefined) {
-			delete ctx.channelAudiences[params.channel_id]
+			delete ctx.audienceChannels[params.channel_id]
 			a.audienceEnded(ctx)
 		}
 	}
@@ -362,26 +365,34 @@ exports.Bot = class extends events.EventEmitter {
 		const session = ninchatClient.newSession()
 
 		const handleEvent = (params, payload) => {
-			if (verboseLogging) {
-				console.log('Event: ' + params.event + ':', params)
-			}
+			try {
+				if (verboseLogging) {
+					console.log('Event: ' + params.event + ':', params)
+				}
 
-			const f = eventHandlers[params.event]
-			if (f !== undefined) {
-				f(this.ctx, params, payload)
+				const f = eventHandlers[params.event]
+				if (f !== undefined) {
+					f(this.ctx, params, payload)
+				}
+			} catch (e) {
+				console.log('Event handler:', e)
 			}
 		}
 
 		const handleSessionEvent = params => {
-			if (params.event == 'error') {
-				console.log('Bot session error:', params)
-				session.close()
-			} else {
-				if (this.ctx === null) {
-					this.ctx = new Context(this, session, params.user_id, debugMessages, verboseLogging)
-				}
+			try {
+				if (params.event == 'error') {
+					console.log('Bot session error:', params)
+					session.close()
+				} else {
+					if (this.ctx === null) {
+						this.ctx = new Context(this, session, params.user_id, debugMessages, verboseLogging)
+					}
 
-				handleEvent(params)
+					handleEvent(params)
+				}
+			} catch (e) {
+				console.log('Event handler:', e)
 			}
 		}
 
@@ -391,10 +402,10 @@ exports.Bot = class extends events.EventEmitter {
 		session.open()
 	}
 
-	sendMessage(channelId, content) {
+	sendMessage(channelId, content, messageType) {
 		const a = this.ctx.audienceChannels[channelId]
 		if (a !== undefined) {
-			a.sendMessage(this.ctx, content)
+			a.sendMessage(this.ctx, content, messageType)
 		}
 	}
 
