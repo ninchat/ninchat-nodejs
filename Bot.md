@@ -1,7 +1,7 @@
 # Ninchat bot framework for Node.js
 
 
-## Connect
+### Connect
 
 ```js
 const ninchatbot = require('ninchat-nodejs/ninchat/bot')
@@ -26,7 +26,7 @@ It needs a normal Ninchat user account.  It will automatically serve customers
 in the audience queues it belongs to.
 
 
-## Chat
+### Chat
 
 ```js
 bot.on('begin', channelId => {})
@@ -48,7 +48,7 @@ bot.sendMessage(channelId, {text: 'Hello!'})
 ```
 
 
-## Restart
+### Restart
 
 If the bot program is restarted and there are existing, ongoing chats with
 customers, the `resume` event is emitted for each one:
@@ -62,7 +62,7 @@ If the customer had written something while the bot was not running, a
 contain more than one message (in chronological order).
 
 
-## Transfer
+### Transfer
 
 The bot may decide to transfer a customer to a human agent:
 
@@ -86,7 +86,7 @@ Events are emitted for queues which the bot uses to serve customers, and queues
 which are possible transfer targets.  The `closed` argument is a boolean.
 
 
-## Example
+### Example
 
 See [hello-bot](https://github.com/ninchat/hello-bot/tree/nodejs) for an
 example implementation.
