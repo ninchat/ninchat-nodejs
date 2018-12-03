@@ -36,12 +36,13 @@ bot.on('end', channelId => {})
 
 The `begin` event is emitted whenever a new customer has been accepted.
 Channel id is a unique identifier (string) for the chat.  The `end` event is
-emitted when the chat has ended.  Between those, `messages` are emitted
-whenever the customer has written something.
+emitted when the chat ends.  Between them, `messages` are emitted whenever the
+customer has written something.
 
 Messages are received as an array of objects.  Normally the array contains just
-one message.  A message object contains the `text` property.  Messages may be
-sent one at a time:
+one message.  A message object contains the `text` property.
+
+Messages may be sent one at a time:
 
 ```js
 bot.sendMessage(channelId, {text: 'Hello!'})
@@ -71,8 +72,8 @@ bot.transferAudience(channelId, queueId)
 ```
 
 The current chat will end automatically (the `end` event is emitted), and the
-customer will be placed the specified queue.  The queue must have been
-whitelisted as a possible target queue via Ninchat queue settings UI.
+customer will be placed in the specified queue.  The queue must have been
+whitelisted as a possible transfer target via Ninchat queue settings UI.
 
 The bot can make its transfer decision based on the state of the target queue
 (or queues):
