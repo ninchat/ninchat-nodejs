@@ -61,8 +61,9 @@ class Queue {
 }
 
 class ChannelAudience {
-	constructor(channelId, audienceId) {
+	constructor(channelId, queueId, audienceId) {
 		this.channelId = channelId
+		this.queueId = queueId
 		this.audienceId = audienceId
 		this.buffering = false
 		this.seenMessageIds = new Set()
@@ -70,11 +71,11 @@ class ChannelAudience {
 	}
 
 	audienceBegun(ctx) {
-		ctx.bot.emit('begin', this.channelId)
+		ctx.bot.emit('begin', this.channelId, this.queueId)
 	}
 
 	audienceResumed(ctx) {
-		ctx.bot.emit('resume', this.channelId)
+		ctx.bot.emit('resume', this.channelId, this.queueId)
 	}
 
 	audienceEnded(ctx) {
@@ -258,7 +259,7 @@ eventHandlers.session_created = (ctx, params) => {
 			} else {
 				let a = ctx.audienceChannels[channelId]
 				if (a === undefined) {
-					a = new ChannelAudience(channelId, info.channel_attrs.audience_id)
+					a = new ChannelAudience(channelId, info.channel_attrs.queue_id, info.channel_attrs.audience_id)
 					a.audienceResumed(ctx)
 				}
 				audienceChannels[channelId] = a
@@ -298,7 +299,7 @@ eventHandlers.queue_updated = (ctx, params) => {
 
 eventHandlers.channel_joined = (ctx, params) => {
 	if ('audience_id' in params.channel_attrs && !(params.channel_id in ctx.audienceChannels)) {
-		const a = new ChannelAudience(params.channel_id, params.channel_attrs.audience_id)
+		const a = new ChannelAudience(params.channel_id, params.channel_attrs.queue_id, params.channel_attrs.audience_id)
 		ctx.audienceChannels[params.channel_id] = a
 		a.audienceBegun(ctx)
 	}

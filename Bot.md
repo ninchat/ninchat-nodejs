@@ -29,7 +29,7 @@ in the audience queues it belongs to.
 ### Chat
 
 ```js
-bot.on('begin', channelId => {})
+bot.on('begin', (channelId, queueId) => {})
 bot.on('messages', (channelId, messages) => {})
 bot.on('end', channelId => {})
 ```
@@ -55,7 +55,7 @@ If the bot program is restarted and there are existing, ongoing chats with
 customers, the `resume` event is emitted for each one:
 
 ```js
-bot.on('resume', channelId => {})
+bot.on('resume', (channelId, queueId) => {})
 ```
 
 If the customer had written something while the bot was not running, a
