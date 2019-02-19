@@ -29,7 +29,7 @@ in the audience queues it belongs to.
 ### Chat
 
 ```js
-bot.on('begin', (channelId, queueId) => {})
+bot.on('begin', (channelId, queueId, info) => {})
 bot.on('messages', (channelId, messages) => {})
 bot.on('end', channelId => {})
 ```
@@ -47,6 +47,17 @@ Messages may be sent one at a time:
 ```js
 bot.sendMessage(channelId, {text: 'Hello!'})
 ```
+
+
+### Info
+
+The third argument passed to the `begin` callback is an object containing
+optional information.  The following property might be available:
+
+- `audienceMetadata` is an object containing metadata that was provided via
+  [Ninchat embed API](https://github.com/ninchat/ninchat-embed/blob/master/embed2.md#customer-service-audience-embed-specific-options)
+  before the chat started.  It includes the `secure` property if one was
+  provided; its value has been decrypted.
 
 
 ### Restart
