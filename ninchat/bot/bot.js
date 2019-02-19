@@ -70,8 +70,12 @@ class ChannelAudience {
 		this.latestMessageId = ''
 	}
 
-	audienceBegun(ctx) {
-		ctx.bot.emit('begin', this.channelId, this.queueId)
+	audienceBegun(ctx, audienceMetadata) {
+		let info = {}
+		if (audienceMetadata !== undefined) {
+			info.audienceMetadata = audienceMetadata
+		}
+		ctx.bot.emit('begin', this.channelId, this.queueId, info)
 	}
 
 	audienceResumed(ctx) {
@@ -301,7 +305,7 @@ eventHandlers.channel_joined = (ctx, params) => {
 	if ('audience_id' in params.channel_attrs && !(params.channel_id in ctx.audienceChannels)) {
 		const a = new ChannelAudience(params.channel_id, params.channel_attrs.queue_id, params.channel_attrs.audience_id)
 		ctx.audienceChannels[params.channel_id] = a
-		a.audienceBegun(ctx)
+		a.audienceBegun(ctx, params.audience_metadata)
 	}
 }
 
