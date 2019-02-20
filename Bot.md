@@ -42,8 +42,8 @@ bot.on('end', channelId => {})
 
 The `begin` event is emitted whenever a new customer has been accepted.
 Channel id is a unique identifier (string) for the chat.  The `end` event is
-emitted when the chat ends.  Between them, `messages` and `receive` are emitted
-whenever the customer has written something.
+emitted when the chat ends.  Between them, `messages` and `receive` events are
+emitted whenever the customer sends something.
 
 A `messages` callback receives text messages as an array of objects.  (Normally
 the array contains just one message.)  A text message object contains the
