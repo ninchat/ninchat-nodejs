@@ -13,10 +13,10 @@ Ninchat, listen to events and send messages.
 
 ```js
 const identity = {type, name, auth}
-const debugMessages = false
+const messageTypes = ['ninchat.com/text']
 const verboseLogging = false
 
-const bot = new ninchatbot.Bot({identity, debugMessages, verboseLogging})
+const bot = new ninchatbot.Bot({identity, messageTypes, verboseLogging})
 ```
 
 A bot is instantiated with an identity object.  It contains authentication
@@ -25,27 +25,40 @@ credentials (email and password) of the bot user.
 It needs a normal Ninchat user account.  It will automatically serve customers
 in the audience queues it belongs to.
 
+The `messageTypes` option lists Ninchat message types which the bot
+implementation wants to use.  If the bot sends and receives only text messages,
+it can be omitted.  (Specifying an empty array disables all message types.)
+
+
 
 ### Chat
 
 ```js
 bot.on('begin', (channelId, queueId, info) => {})
-bot.on('messages', (channelId, messages) => {})
+bot.on('messages', (channelId, textMessages) => {})
+bot.on('receive', (channelId, typedMessages) => {})
 bot.on('end', channelId => {})
 ```
 
 The `begin` event is emitted whenever a new customer has been accepted.
 Channel id is a unique identifier (string) for the chat.  The `end` event is
-emitted when the chat ends.  Between them, `messages` are emitted whenever the
-customer has written something.
+emitted when the chat ends.  Between them, `messages` and `receive` are emitted
+whenever the customer has written something.
 
-Messages are received as an array of objects.  Normally the array contains just
-one message.  A message object contains the `text` property.
+A `messages` callback receives text messages as an array of objects.  (Normally
+the array contains just one message.)  A text message object contains the
+`text` property.
+
+A `receive` callback can be used to receive any supported message type
+(including the text messages).  It receives an array of objects which contain
+the `messageType` and `content` properties.  Content format depends on the
+message type.
 
 Messages may be sent one at a time:
 
 ```js
-bot.sendMessage(channelId, {text: 'Hello!'})
+bot.sendMessage(channelId, {text: 'Hello!'}) // Defaults to text message type.
+bot.sendMessage(channelId, {text: 'Hello!'}, 'ninchat.com/text')
 ```
 
 

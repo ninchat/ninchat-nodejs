@@ -29,6 +29,20 @@
 const events = require('events')
 const ninchatClient = require('ninchat-js')
 
+function parseContent(ctx, messageType, payload) {
+	let content
+
+	try {
+		content = JSON.parse(ninchatClient.stringifyFrame(payload[0]))
+	} catch (e) {
+		if (ctx.verbose) {
+			console.log(messageType, 'message content parse error: ', e)
+		}
+	}
+
+	return content
+}
+
 class Queue {
 	constructor(id, attrs, settings, isMember) {
 		this.id = id
@@ -86,15 +100,34 @@ class ChannelAudience {
 		ctx.bot.emit('end', this.channelId)
 	}
 
-	messageReceived(ctx, messageId, content) {
-		if (!this.buffering && !this.seenMessageIds.has(messageId)) {
+	messageReceived(ctx, messageId, messageType, payload) {
+		if (this.buffering) {
+			return
+		}
+
+		if (this.seenMessageIds.has(messageId)) {
+			return
+		}
+
+		const m = {
+			messageType: messageType,
+		}
+
+		const content = parseContent(ctx, messageType, payload)
+		if (content !== undefined) {
+			m.content = content
+		}
+
+		if (messageType === 'ninchat.com/text') {
 			ctx.bot.emit('messages', this.channelId, [content])
+		}
 
-			this.seenMessageIds.add(messageId)
+		ctx.bot.emit('receive', this.channelId, [m])
 
-			if (messageId > this.latestMessageId) {
-				this.latestMessageId = messageId
-			}
+		this.seenMessageIds.add(messageId)
+
+		if (messageId > this.latestMessageId) {
+			this.latestMessageId = messageId
 		}
 	}
 
@@ -103,7 +136,6 @@ class ChannelAudience {
 			action:         'load_history',
 			channel_id:     this.channelId,
 			message_id:     this.latestMessageId,
-			message_types:  ['ninchat.com/text'],
 			history_length: 1000,
 			history_order:  1,
 		})
@@ -118,23 +150,33 @@ class ChannelAudience {
 
 			if (ids.length > 0) {
 				let finalId
-				let contents = []
+				let texts = []
+				let typed = []
 
 				ids.forEach(id => {
 					finalId = id
 
 					if (!this.seenMessageIds.has(id)) {
-						const c = buffer[id]
-						if (c === null) {
+						const m = buffer[id]
+						if (m === null) {
 							// Own message; discard older messages.
-							contents.length = 0
+							texts.length = 0
+							typed.length = 0
 						} else {
-							contents.push(c)
+							if (m.messageType === 'ninchat.com/text') {
+								texts.push(m.content)
+							}
+							typed.push(m)
 						}
 					}
 				})
 
-				ctx.bot.emit('messages', this.channelId, contents)
+				if (texts.length > 0) {
+					ctx.bot.emit('messages', this.channelId, texts)
+				}
+				if (typed.length > 0) {
+					ctx.bot.emit('receive', this.channelId, typed)
+				}
 
 				ids.forEach(id => this.seenMessageIds.add(id))
 
@@ -145,10 +187,23 @@ class ChannelAudience {
 		}
 
 		const onMessage = (params, payload) => {
+			if (params.event !== 'message_received') {
+				return
+			}
+
 			if (params.message_user_id === ctx.userId) {
 				buffer[params.message_id] = null // Marker
 			} else {
-				buffer[params.message_id] = JSON.parse(ninchatClient.stringifyFrame(payload[0]))
+				const m = {
+					messageType: params.message_type,
+				}
+
+				const content = parseContent(ctx, params.message_type, payload)
+				if (content !== undefined) {
+					m.content = content
+				}
+
+				buffer[params.message_id] = m
 			}
 		}
 
@@ -245,7 +300,6 @@ function queueUpdated(ctx, id, attrs, newSettings, isMember) {
 }
 
 let eventHandlers = {}
-let messageHandlers = {}
 
 eventHandlers.error = (ctx, params) => {
 	console.log('Error:', params)
@@ -324,32 +378,30 @@ eventHandlers.channel_updated = (ctx, params) => {
 }
 
 eventHandlers.message_received = (ctx, params, payload) => {
-	const content = JSON.parse(ninchatClient.stringifyFrame(payload[0]))
-
-	if (ctx.verbose) {
-		console.log('Message content:', content)
+	if (params.message_user_id === ctx.userId) {
+		return
 	}
 
-	const f = messageHandlers[params.message_type]
-	if (f !== undefined) {
-		f(ctx, params, content)
+	const channelId = params.channel_id
+	if (channelId === undefined) {
+		return
 	}
-}
 
-messageHandlers['ninchat.com/text'] = (ctx, params, content) => {
-	if ('channel_id' in params && params.message_user_id !== ctx.userId) {
-		const a = ctx.audienceChannels[params.channel_id]
-		if (a !== undefined) {
-			a.messageReceived(ctx, params.message_id, content)
-		}
+	const a = ctx.audienceChannels[channelId]
+	if (a === undefined) {
+		return
 	}
+
+	a.messageReceived(ctx, params.message_id, params.message_type, payload)
 }
 
 exports.Bot = class extends events.EventEmitter {
-	constructor({identity, debugMessages, verboseLogging}) {
+	constructor({identity, messageTypes, debugMessages, verboseLogging}) {
 		super()
 
-		const messageTypes = Object.keys(messageHandlers)
+		if (messageTypes === undefined || messageTypes === null) {
+			messageTypes = ['ninchat.com/text']
+		}
 
 		if (debugMessages) {
 			messageTypes.push('ninch.at/bot/debug')
