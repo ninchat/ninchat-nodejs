@@ -73,6 +73,18 @@ optional information.  The following property might be available:
   provided; its value has been decrypted.
 
 
+### Metadata messages
+
+In addition to audience metadata that is received at the start of the chat,
+metadata messages may be received during the chat.  In order to do that the
+`ninchat.com/metadata` message type must be specified when instantiating Bot,
+and the `receive` event must be handled.
+
+The content of a metadata message is an object with the `data` property. See
+[Ninchat API reference](https://github.com/ninchat/ninchat-api/blob/v2/api.md#ninchatcommetadata)
+for details.
+
+
 ### Restart
 
 If the bot program is restarted and there are existing, ongoing chats with
