@@ -85,6 +85,28 @@ The content of a metadata message is an object with the `data` property. See
 for details.
 
 
+### UI messages
+
+A bot may display widgets which trigger actions when the customer interacts
+with them.  The bot sends `ninchat.com/ui/compose` messages and receives
+corrseponding `ninchat.com/ui/action` messages.
+
+Composition example:
+
+```js
+const content = [
+	{element: 'button', id: 'foo-1', label: 'Yes'},
+	{element: 'button', id: 'foo-2', label: 'No'},
+]
+
+bot.sendMessage(id, content, 'ninchat.com/ui/compose')
+```
+
+Remember to specify both message types when instantiating Bot.  See
+[Ninchat API reference](https://github.com/ninchat/ninchat-api/blob/v2/api.md#ninchatcomui)
+for details.
+
+
 ### Restart
 
 If the bot program is restarted and there are existing, ongoing chats with
