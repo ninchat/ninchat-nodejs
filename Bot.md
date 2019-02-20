@@ -76,7 +76,7 @@ optional information.  The following property might be available:
 ### Metadata messages
 
 In addition to audience metadata that is received at the start of the chat,
-metadata messages may be received during the chat.  In order to do that the
+metadata messages may be received during the chat.  In order to do that, the
 `ninchat.com/metadata` message type must be specified when instantiating Bot,
 and the `receive` event must be handled.
 
