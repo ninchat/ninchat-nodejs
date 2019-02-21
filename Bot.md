@@ -13,10 +13,10 @@ Ninchat, listen to events and send messages.
 
 ```js
 const identity = {type, name, auth}
-const debugMessages = false
+const messageTypes = ['ninchat.com/text']
 const verboseLogging = false
 
-const bot = new ninchatbot.Bot({identity, debugMessages, verboseLogging})
+const bot = new ninchatbot.Bot({identity, messageTypes, verboseLogging})
 ```
 
 A bot is instantiated with an identity object.  It contains authentication
@@ -25,27 +25,40 @@ credentials (email and password) of the bot user.
 It needs a normal Ninchat user account.  It will automatically serve customers
 in the audience queues it belongs to.
 
+The `messageTypes` option lists Ninchat message types which the bot
+implementation wants to use.  If the bot sends and receives only text messages,
+it can be omitted.  (Specifying an empty array disables all message types.)
+
+
 
 ### Chat
 
 ```js
 bot.on('begin', (channelId, queueId, info) => {})
-bot.on('messages', (channelId, messages) => {})
+bot.on('messages', (channelId, textMessages) => {})
+bot.on('receive', (channelId, typedMessages) => {})
 bot.on('end', channelId => {})
 ```
 
 The `begin` event is emitted whenever a new customer has been accepted.
 Channel id is a unique identifier (string) for the chat.  The `end` event is
-emitted when the chat ends.  Between them, `messages` are emitted whenever the
-customer has written something.
+emitted when the chat ends.  Between them, `messages` and `receive` events are
+emitted whenever the customer sends something.
 
-Messages are received as an array of objects.  Normally the array contains just
-one message.  A message object contains the `text` property.
+A `messages` callback receives text messages as an array of objects.  (Normally
+the array contains just one message.)  A text message object contains the
+`text` property.
+
+A `receive` callback can be used to receive any supported message type
+(including the text messages).  It receives an array of objects which contain
+the `messageType` and `content` properties.  Content format depends on the
+message type.
 
 Messages may be sent one at a time:
 
 ```js
-bot.sendMessage(channelId, {text: 'Hello!'})
+bot.sendMessage(channelId, {text: 'Hello!'}) // Defaults to text message type.
+bot.sendMessage(channelId, {text: 'Hello!'}, 'ninchat.com/text')
 ```
 
 
@@ -58,6 +71,40 @@ optional information.  The following property might be available:
   [Ninchat embed API](https://github.com/ninchat/ninchat-embed/blob/master/embed2.md#customer-service-audience-embed-specific-options)
   before the chat started.  It includes the `secure` property if one was
   provided; its value has been decrypted.
+
+
+### Metadata messages
+
+In addition to audience metadata that is received at the start of the chat,
+metadata messages may be received during the chat.  In order to do that, the
+`ninchat.com/metadata` message type must be specified when instantiating Bot,
+and the `receive` event must be handled.
+
+The content of a metadata message is an object with the `data` property. See
+[Ninchat API reference](https://github.com/ninchat/ninchat-api/blob/v2/api.md#ninchatcommetadata)
+for details.
+
+
+### UI messages
+
+A bot may display widgets which trigger actions when the customer interacts
+with them.  The bot sends `ninchat.com/ui/compose` messages and receives
+corrseponding `ninchat.com/ui/action` messages.
+
+Composition example:
+
+```js
+const content = [
+	{element: 'button', id: 'foo-1', label: 'Yes'},
+	{element: 'button', id: 'foo-2', label: 'No'},
+]
+
+bot.sendMessage(id, content, 'ninchat.com/ui/compose')
+```
+
+Remember to specify both message types when instantiating Bot.  See
+[Ninchat API reference](https://github.com/ninchat/ninchat-api/blob/v2/api.md#ninchatcomui)
+for details.
 
 
 ### Restart
