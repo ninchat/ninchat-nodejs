@@ -29,6 +29,8 @@
 const events = require('events')
 const ninchatClient = require('ninchat-js')
 
+const AnticsClientInstance = require('./antics.js').ClientInstance
+
 function parseContent(ctx, messageType, payload) {
 	let content
 
@@ -246,8 +248,9 @@ class ChannelAudience {
 }
 
 class Context {
-	constructor(bot, session, userId, debug, verbose) {
+	constructor(bot, antics, session, userId, debug, verbose) {
 		this.bot = bot
+		this.antics = antics
 		this.session = session
 		this.userId = userId
 		this.debug = debug
@@ -265,7 +268,51 @@ class Context {
 			}
 		}
 
-		return this.session.send(params, payload)
+		return new ActionPromise(this.antics, params.action, this.session.send(params, payload))
+	}
+}
+
+class ActionPromise {
+	constructor(antics, name, clientPromise) {
+		this.antics = antics
+		this.time = new Date().getTime()
+		this.name = name
+
+		this.onSuccess = () => {}
+		this.onError = () => {}
+		this.onUpdate = () => {}
+
+		clientPromise.then(
+			(header, payload) => {
+				this.handleAntics(header, false)
+				this.onSuccess(header, payload)
+			},
+			(header) => {
+				this.handleAntics(header, true)
+				this.onError(header)
+			},
+			(header, payload) => {
+				this.onUpdate(header, payload)
+			},
+		)
+	}
+
+	then(onSuccess, onError, onUpdate) {
+		if (onSuccess) { this.onSuccess = onSuccess }
+		if (onError)   { this.onError = onError     }
+		if (onUpdate)  { this.onUpdate = onUpdate   }
+	}
+
+	handleAntics(eventHeader, fail)  {
+		const ant = {
+			t: (new Date().getTime() - this.time) / 1000.0,
+			a: this.name,
+			i: eventHeader.action_id,
+		}
+		if (fail) {
+			ant.fail = true
+		}
+		this.antics.send(ant)
 	}
 }
 
@@ -396,7 +443,7 @@ eventHandlers.message_received = (ctx, params, payload) => {
 }
 
 exports.Bot = class extends events.EventEmitter {
-	constructor({identity, messageTypes, debugMessages, verboseLogging}) {
+	constructor({identity, messageTypes, debugMessages, verboseLogging, anticsHost}) {
 		super()
 
 		if (messageTypes === undefined || messageTypes === null) {
@@ -419,7 +466,57 @@ exports.Bot = class extends events.EventEmitter {
 
 		this.ctx = null
 
+		const antics = new AnticsClientInstance(anticsHost, identity).newSessionContext()
+
 		const session = ninchatClient.newSession()
+		let createStarted = new Date().getTime()
+
+		const handleSessionEvent = params => {
+			try {
+				let antAct = null
+
+				if (createStarted !== null) {
+					antAct = {
+						t: (new Date().getTime() - createStarted) / 1000.0,
+						a: 'create_session',
+					}
+					createStarted = null
+				} else {
+					const antExc = {
+						w: 'session_lost',
+					}
+					if (params.event !== 'session_created') {
+						antExc.fail = true
+					}
+					antics.send(antExc)
+				}
+
+				if (params.event == 'error') {
+					console.log('Bot session error:', params)
+					session.close()
+
+					if (antAct) {
+						antAct.fail = true
+						antics.send(antAct)
+					}
+					antics.flush()
+
+					this.emit('error', params)
+				} else {
+					if (this.ctx === null) {
+						this.ctx = new Context(this, antics, session, params.user_id, debugMessages, verboseLogging)
+					}
+
+					handleEvent(params)
+
+					if (antAct) {
+						antics.send(antAct)
+					}
+				}
+			} catch (e) {
+				console.log('Event handler:', e)
+			}
+		}
 
 		const handleEvent = (params, payload) => {
 			try {
@@ -436,26 +533,60 @@ exports.Bot = class extends events.EventEmitter {
 			}
 		}
 
-		const handleSessionEvent = params => {
-			try {
-				if (params.event == 'error') {
-					console.log('Bot session error:', params)
-					session.close()
-				} else {
-					if (this.ctx === null) {
-						this.ctx = new Context(this, session, params.user_id, debugMessages, verboseLogging)
-					}
+		let oldConnState = null
+		let connStarted = null
 
-					handleEvent(params)
+		const handleConnState = state => {
+			if (state == oldConnState) {
+				return
+			}
+
+			if (oldConnState == 'connected') {
+				antics.send({
+					w: 'disconnected',
+				})
+			}
+
+			switch (state) {
+			case 'connecting':
+				connStarted = new Date().getTime()
+				break
+
+			case 'connected':
+				antics.send({
+					w: 'conn',
+					t: (new Date().getTime() - connStarted) / 1000.0,
+				})
+				break
+
+			case 'disconnected':
+				if (oldConnState == 'connecting') {
+					antics.send({
+						w:    'conn',
+						t:    (new Date().getTime() - connStarted) / 1000.0,
+						fail: true,
+					})
+					connStarted = null
 				}
-			} catch (e) {
-				console.log('Event handler:', e)
+				break
+			}
+
+			oldConnState = state
+		}
+
+		let handleClientLog = null
+
+		if (verboseLogging) {
+			handleClientLog = msg => {
+				console.log('NinchatClient:', msg)
 			}
 		}
 
 		session.setParams(params)
 		session.onSessionEvent(handleSessionEvent)
 		session.onEvent(handleEvent)
+		session.onConnState(handleConnState)
+		session.onLog(handleClientLog)
 		session.open()
 	}
 

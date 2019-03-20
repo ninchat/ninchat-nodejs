@@ -145,6 +145,16 @@ Events are emitted for queues which the bot uses to serve customers, and queues
 which are possible transfer targets.  The `closed` argument is a boolean.
 
 
+### Fatal errors
+
+The `error` event is emitted when an exceptional event prevents the bot from
+proceeding:
+
+```js
+bot.on('error', eventDetails => {})
+```
+
+
 ### Example
 
 See [hello-bot](https://github.com/ninchat/hello-bot/tree/nodejs) for an
