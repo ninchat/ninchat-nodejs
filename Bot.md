@@ -155,6 +155,20 @@ bot.on('error', eventDetails => {})
 ```
 
 
+### Closing session
+
+```js
+bot.on('closed', () => {})
+bot.close()
+```
+
+The `closed` event is emitted after the session has been closed as a result of
+calling the close method.  Other events will no longer be emitted after that.
+
+If the close method is called after an `error` event has been emitted, the
+`closed` event is not emitted.
+
+
 ### Example
 
 See [hello-bot](https://github.com/ninchat/hello-bot/tree/nodejs) for an

@@ -468,7 +468,7 @@ exports.Bot = class extends events.EventEmitter {
 
 		const antics = new AnticsClientInstance(anticsHost, identity).newSessionContext()
 
-		const session = ninchatClient.newSession()
+		this.session = ninchatClient.newSession()
 		let createStarted = new Date().getTime()
 
 		const handleSessionEvent = params => {
@@ -493,7 +493,7 @@ exports.Bot = class extends events.EventEmitter {
 
 				if (params.event == 'error') {
 					console.log('Bot session error:', params)
-					session.close()
+					this.session.close()
 
 					if (antAct) {
 						antAct.fail = true
@@ -504,7 +504,7 @@ exports.Bot = class extends events.EventEmitter {
 					this.emit('error', params)
 				} else {
 					if (this.ctx === null) {
-						this.ctx = new Context(this, antics, session, params.user_id, debugMessages, verboseLogging)
+						this.ctx = new Context(this, antics, this.session, params.user_id, debugMessages, verboseLogging)
 					}
 
 					handleEvent(params)
@@ -531,6 +531,14 @@ exports.Bot = class extends events.EventEmitter {
 			} catch (e) {
 				console.log('Event handler:', e)
 			}
+		}
+
+		const handleClose = () => {
+			if (verboseLogging) {
+				console.log('Session closed')
+			}
+
+			this.emit('closed')
 		}
 
 		let oldConnState = null
@@ -582,12 +590,17 @@ exports.Bot = class extends events.EventEmitter {
 			}
 		}
 
-		session.setParams(params)
-		session.onSessionEvent(handleSessionEvent)
-		session.onEvent(handleEvent)
-		session.onConnState(handleConnState)
-		session.onLog(handleClientLog)
-		session.open()
+		this.session.setParams(params)
+		this.session.onSessionEvent(handleSessionEvent)
+		this.session.onEvent(handleEvent)
+		this.session.onClose(handleClose)
+		this.session.onConnState(handleConnState)
+		this.session.onLog(handleClientLog)
+		this.session.open()
+	}
+
+	close() {
+		this.session.close()
 	}
 
 	sendMessage(channelId, content, messageType) {
