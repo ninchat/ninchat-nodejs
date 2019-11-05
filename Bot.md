@@ -59,6 +59,7 @@ Messages may be sent one at a time:
 ```js
 bot.sendMessage(channelId, {text: 'Hello!'}) // Defaults to text message type.
 bot.sendMessage(channelId, {text: 'Hello!'}, 'ninchat.com/text')
+bot.sendMessage(channelId, {data: {Key: 42}}, 'ninchat.com/metadata', []) // Send invisible metadata.
 ```
 
 

@@ -222,7 +222,7 @@ class ChannelAudience {
 		this.buffering = true
 	}
 
-	sendMessage(ctx, content, messageType) {
+	sendMessage(ctx, content, messageType, messageRecipientIds) {
 		if (messageType === undefined) {
 			messageType = 'ninchat.com/text'
 		}
@@ -231,6 +231,10 @@ class ChannelAudience {
 			action:       'send_message',
 			channel_id:   this.channelId,
 			message_type: messageType,
+		}
+
+		if (messageRecipientIds !== undefined && messageRecipientIds !== null) {
+			params.message_recipient_ids = messageRecipientIds
 		}
 
 		ctx.sendAction(params, [JSON.stringify(content)])
