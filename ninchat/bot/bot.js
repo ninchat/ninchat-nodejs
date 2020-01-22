@@ -31,6 +31,9 @@ const ninchatClient = require('ninchat-js')
 
 const AnticsClientInstance = require('./antics.js').ClientInstance
 
+const defaultUserAgent = 'ninchat-nodejs-bot/1' // Replaces NinchatClient's default.
+exports.defaultUserAgent = defaultUserAgent
+
 function parseContent(ctx, messageType, payload) {
 	let content
 
@@ -447,7 +450,7 @@ eventHandlers.message_received = (ctx, params, payload) => {
 }
 
 exports.Bot = class extends events.EventEmitter {
-	constructor({identity, messageTypes, debugMessages, verboseLogging, anticsHost}) {
+	constructor({identity, messageTypes, debugMessages, verboseLogging, anticsHost, headers}) {
 		super()
 
 		if (messageTypes === undefined || messageTypes === null) {
@@ -473,6 +476,8 @@ exports.Bot = class extends events.EventEmitter {
 		const antics = new AnticsClientInstance(anticsHost, identity).newSessionContext()
 
 		this.session = ninchatClient.newSession()
+		this.session.setHeader('User-Agent', headers['User-Agent'] || defaultUserAgent)
+
 		let createStarted = new Date().getTime()
 
 		const handleSessionEvent = params => {
