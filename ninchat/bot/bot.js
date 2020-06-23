@@ -249,6 +249,17 @@ class ChannelAudience {
 
 		ctx.sendAction(params)
 	}
+
+	setWriting(ctx, writing) {
+		const params = {
+			action:       'update_member',
+			channel_id:   this.channelId,
+			user_id:      ctx.userId,
+			member_attrs: {writing},
+		}
+
+		ctx.sendAction(params)
+	}
 }
 
 class Context {
@@ -618,6 +629,13 @@ exports.Bot = class extends events.EventEmitter {
 		const a = this.ctx.audienceChannels[currentChannelId]
 		if (a !== undefined) {
 			a.transferAudience(this.ctx, targetQueueId)
+		}
+	}
+
+	setWriting(channelId, writing) {
+		const a = this.ctx.audienceChannels[channelId]
+		if (a !== undefined) {
+			a.setWriting(this.ctx, writing)
 		}
 	}
 }
