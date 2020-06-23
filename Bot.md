@@ -62,6 +62,16 @@ bot.sendMessage(channelId, {text: 'Hello!'}, 'ninchat.com/text')
 bot.sendMessage(channelId, {data: {Key: 42}}, 'ninchat.com/metadata', []) // Send invisible metadata.
 ```
 
+The writing indicator may be set or unset explicitly (it is not unset
+automatically):
+
+```js
+bot.setWriting(channelId, true)
+// ...
+bot.setWriting(channelId, false)
+bot.sendMessage(channelId, {text: 'Phew! This message took a long time to write...'}, 'ninchat.com/text')
+```
+
 
 ### Info
 
