@@ -37,6 +37,7 @@ it can be omitted.  (Specifying an empty array disables all message types.)
 bot.on('begin', (channelId, queueId, info) => {})
 bot.on('messages', (channelId, textMessages) => {})
 bot.on('receive', (channelId, typedMessages) => {})
+bot.on('writing', (channelId, writing) => {})
 bot.on('end', channelId => {})
 ```
 
@@ -53,6 +54,12 @@ A `receive` callback can be used to receive any supported message type
 (including the text messages).  It receives an array of objects which contain
 the `messageType` and `content` properties.  Content format depends on the
 message type.
+
+The `writing` event is emitted when a customer starts to write or stops
+writing.  Redundant events may also be emitted.  (Note that the writing status
+is not tied to any particular message; messages may be received without the
+writing status ever being active, and writing status may or may not be turned
+off after a message is received.)
 
 Messages may be sent one at a time:
 

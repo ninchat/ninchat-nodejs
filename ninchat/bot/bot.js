@@ -102,6 +102,10 @@ class ChannelAudience {
 		ctx.bot.emit('end', this.channelId)
 	}
 
+	peerUpdated(ctx, attrs) {
+		ctx.bot.emit('writing', this.channelId, attrs.writing || false)
+	}
+
 	messageReceived(ctx, messageId, messageType, payload) {
 		if (this.buffering) {
 			return
@@ -436,6 +440,17 @@ eventHandlers.channel_updated = (ctx, params) => {
 			delete ctx.audienceChannels[params.channel_id]
 			a.audienceEnded(ctx)
 		}
+	}
+}
+
+eventHandlers.channel_member_updated = (ctx, params) => {
+	if (params.user_id === ctx.userId) {
+		return
+	}
+
+	const a = ctx.audienceChannels[params.channel_id]
+	if (a !== undefined) {
+		a.peerUpdated(ctx, params.member_attrs)
 	}
 }
 
