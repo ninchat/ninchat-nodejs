@@ -1,6 +1,6 @@
 {
   "name": "ninchat-nodejs",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Node.js utilities for working with api.ninchat.com",
   "repository": "ninchat/ninchat-nodejs",
   "license": "BSD-2-Clause",
