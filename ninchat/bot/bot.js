@@ -77,10 +77,11 @@ class Queue {
 }
 
 class ChannelAudience {
-	constructor(channelId, queueId, audienceId) {
+	constructor(channelId, channelAttrs) {
 		this.channelId = channelId
-		this.queueId = queueId
-		this.audienceId = audienceId
+		this.queueId = channelAttrs.queue_id
+		this.audienceId = channelAttrs.audience_id
+		this.requesterId = channelAttrs.requester_id
 		this.buffering = false
 		this.seenMessageIds = new Set()
 		this.latestMessageId = ''
@@ -102,15 +103,19 @@ class ChannelAudience {
 		ctx.bot.emit('end', this.channelId)
 	}
 
-	peerUpdated(ctx, attrs) {
-		ctx.bot.emit('writing', this.channelId, attrs.writing || false)
+	memberUpdated(ctx, userId, attrs) {
+		if (userId === this.requesterId) {
+			ctx.bot.emit('writing', this.channelId, attrs.writing || false)
+		}
 	}
 
-	messageReceived(ctx, messageId, messageType, payload) {
+	messageReceived(ctx, messageId, messageUserId, messageType, payload) {
+		if (messageUserId !== this.requesterId) {
+			return
+		}
 		if (this.buffering) {
 			return
 		}
-
 		if (this.seenMessageIds.has(messageId)) {
 			return
 		}
@@ -168,7 +173,7 @@ class ChannelAudience {
 							// Own message; discard older messages.
 							texts.length = 0
 							typed.length = 0
-						} else {
+						} else if (m !== undefined) {
 							if (m.messageType === 'ninchat.com/text') {
 								texts.push(m.content)
 							}
@@ -197,10 +202,12 @@ class ChannelAudience {
 				return
 			}
 
+			let m
+
 			if (params.message_user_id === ctx.userId) {
-				buffer[params.message_id] = null // Marker
-			} else {
-				const m = {
+				m = null // Marker
+			} else if (params.message_user_id === this.requesterId) {
+				m = {
 					messageType: params.message_type,
 				}
 
@@ -208,9 +215,9 @@ class ChannelAudience {
 				if (content !== undefined) {
 					m.content = content
 				}
-
-				buffer[params.message_id] = m
 			}
+
+			buffer[params.message_id] = m
 		}
 
 		const onFinalMessage = (params, payload) => {
@@ -383,7 +390,7 @@ eventHandlers.session_created = (ctx, params) => {
 			} else {
 				let a = ctx.audienceChannels[channelId]
 				if (a === undefined) {
-					a = new ChannelAudience(channelId, info.channel_attrs.queue_id, info.channel_attrs.audience_id)
+					a = new ChannelAudience(channelId, info.channel_attrs)
 					a.audienceResumed(ctx)
 				}
 				audienceChannels[channelId] = a
@@ -423,7 +430,7 @@ eventHandlers.queue_updated = (ctx, params) => {
 
 eventHandlers.channel_joined = (ctx, params) => {
 	if ('audience_id' in params.channel_attrs && !(params.channel_id in ctx.audienceChannels)) {
-		const a = new ChannelAudience(params.channel_id, params.channel_attrs.queue_id, params.channel_attrs.audience_id)
+		const a = new ChannelAudience(params.channel_id, params.channel_attrs)
 		ctx.audienceChannels[params.channel_id] = a
 		a.audienceBegun(ctx, params.audience_metadata)
 	}
@@ -444,32 +451,19 @@ eventHandlers.channel_updated = (ctx, params) => {
 }
 
 eventHandlers.channel_member_updated = (ctx, params) => {
-	if (params.user_id === ctx.userId) {
-		return
-	}
-
 	const a = ctx.audienceChannels[params.channel_id]
 	if (a !== undefined) {
-		a.peerUpdated(ctx, params.member_attrs)
+		a.memberUpdated(ctx, params.user_id, params.member_attrs)
 	}
 }
 
 eventHandlers.message_received = (ctx, params, payload) => {
-	if (params.message_user_id === ctx.userId) {
-		return
+	if (params.channel_id !== undefined) {
+		const a = ctx.audienceChannels[params.channel_id]
+		if (a !== undefined) {
+			a.messageReceived(ctx, params.message_id, params.message_user_id, params.message_type, payload)
+		}
 	}
-
-	const channelId = params.channel_id
-	if (channelId === undefined) {
-		return
-	}
-
-	const a = ctx.audienceChannels[channelId]
-	if (a === undefined) {
-		return
-	}
-
-	a.messageReceived(ctx, params.message_id, params.message_type, payload)
 }
 
 exports.Bot = class extends events.EventEmitter {
