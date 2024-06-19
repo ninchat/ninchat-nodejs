@@ -635,10 +635,10 @@ exports.Bot = class extends events.EventEmitter {
 		this.session.close()
 	}
 
-	sendMessage(channelId, content, messageType) {
+	sendMessage(channelId, content, messageType, messageRecipientIds, messagePrivileged, messageFold) {
 		const a = this.ctx.audienceChannels[channelId]
 		if (a !== undefined) {
-			a.sendMessage(this.ctx, content, messageType)
+			a.sendMessage(this.ctx, content, messageType, messageRecipientIds, messagePrivileged, messageFold)
 		}
 	}
 
