@@ -67,6 +67,7 @@ Messages may be sent one at a time:
 bot.sendMessage(channelId, {text: 'Hello!'}) // Defaults to text message type.
 bot.sendMessage(channelId, {text: 'Hello!'}, 'ninchat.com/text')
 bot.sendMessage(channelId, {data: {Key: 42}}, 'ninchat.com/metadata', []) // Send invisible metadata.
+bot.sendMessage(channelId, {data: {tag_ids: ['abc123']}}, 'ninchat.com/metadata', null, true) // Send privileged metadata.
 ```
 
 The writing indicator may be set or unset explicitly (it is not unset

@@ -233,7 +233,7 @@ class ChannelAudience {
 		this.buffering = true
 	}
 
-	sendMessage(ctx, content, messageType, messageRecipientIds) {
+	sendMessage(ctx, content, messageType, messageRecipientIds, messagePrivileged) {
 		if (messageType === undefined) {
 			messageType = 'ninchat.com/text'
 		}
@@ -246,6 +246,10 @@ class ChannelAudience {
 
 		if (messageRecipientIds !== undefined && messageRecipientIds !== null) {
 			params.message_recipient_ids = messageRecipientIds
+		}
+
+		if (messagePrivileged) {
+			params.message_privileged = true
 		}
 
 		ctx.sendAction(params, [JSON.stringify(content)])
